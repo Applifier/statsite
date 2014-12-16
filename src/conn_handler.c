@@ -34,6 +34,7 @@
 #define BIN_OUT_HIST_BIN      0x9
 #define BIN_OUT_HIST_CEIL     0xa
 #define BIN_OUT_RATE     0xb
+#define BIN_OUT_COUNT_PS 0xc
 #define BIN_OUT_PCT     0x80
 
 // Macro to provide branch meta-data
@@ -118,6 +119,7 @@ static int stream_formatter(FILE *pipe, void *data, metric_type type, char *name
                 STREAM("%s%s.lower|%f|%lld\n", prefix, name, counter_min(value));
                 STREAM("%s%s.upper|%f|%lld\n", prefix, name, counter_max(value));
                 STREAM("%s%s.rate|%f|%lld\n", prefix, name, counter_sum(value) / GLOBAL_CONFIG->flush_interval);
+		STREAM("%s%s.count_ps|%lld|%lld\n", prefix, name, counter_count(value) / GLOBAL_CONFIG->flush_interval);
             } else {
                 STREAM("%s%s|%f|%lld\n", prefix, name, counter_sum(value));
             }
@@ -140,6 +142,7 @@ static int stream_formatter(FILE *pipe, void *data, metric_type type, char *name
             STREAM("%s%s.p95|%f|%lld\n", prefix, name, timer_query(&t->tm, 0.95));
             STREAM("%s%s.p99|%f|%lld\n", prefix, name, timer_query(&t->tm, 0.99));
             STREAM("%s%s.rate|%f|%lld\n", prefix, name, timer_sum(&t->tm) / GLOBAL_CONFIG->flush_interval);
+            STREAM("%s%s.count_ps|%f|%lld\n", prefix, name, timer_count(&t->tm) / GLOBAL_CONFIG->flush_interval);
 
             // Stream the histogram values
             if (t->conf) {
@@ -211,6 +214,7 @@ static int stream_formatter_bin(FILE *pipe, void *data, metric_type type, char *
             STREAM_BIN(BIN_TYPE_COUNTER, BIN_OUT_MIN, counter_min(value));
             STREAM_BIN(BIN_TYPE_COUNTER, BIN_OUT_MAX, counter_max(value));
             STREAM_BIN(BIN_TYPE_COUNTER, BIN_OUT_RATE, counter_sum(value) / GLOBAL_CONFIG->flush_interval);
+            STREAM_BIN(BIN_TYPE_COUNTER, BIN_OUT_COUNT_PS, counter_count(value) / GLOBAL_CONFIG->flush_interval);
             break;
 
         case SET:
@@ -229,6 +233,8 @@ static int stream_formatter_bin(FILE *pipe, void *data, metric_type type, char *
             STREAM_BIN(BIN_TYPE_TIMER, BIN_OUT_PCT | 50, timer_query(&t->tm, 0.5));
             STREAM_BIN(BIN_TYPE_TIMER, BIN_OUT_PCT | 95, timer_query(&t->tm, 0.95));
             STREAM_BIN(BIN_TYPE_TIMER, BIN_OUT_PCT | 99, timer_query(&t->tm, 0.99));
+            STREAM_BIN(BIN_TYPE_TIMER, BIN_OUT_RATE, timer_sum(&t->tm) / GLOBAL_CONFIG->flush_interval);
+            STREAM_BIN(BIN_TYPE_TIMER, BIN_OUT_COUNT_PS, timer_count(&t->tm) / GLOBAL_CONFIG->flush_interval); 
 
             // Binary streaming for histograms
             if (t->conf) {
